@@ -1,0 +1,15 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flash",
+            "type": "node-terminal",
+            "request": "launch",
+            "preLaunchTask": "Build",
+            "command": "st-flash --connect-under-reset --reset write firmware.bin 0x08000000",
+        }
+    ]
+}
