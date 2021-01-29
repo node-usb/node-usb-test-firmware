@@ -12,14 +12,14 @@
 static const struct usb_device_descriptor dev = {
     .bLength = USB_DT_DEVICE_SIZE,
     .bDescriptorType = USB_DT_DEVICE,
-    .bcdUSB = 0x0200,
-    .bDeviceClass = 0x00,
+    .bcdUSB = 0x0110, // USB 1.10
+    .bDeviceClass = 0x00, // Use class information in the Interface Descriptors
     .bDeviceSubClass = 0,
     .bDeviceProtocol = 0,
     .bMaxPacketSize0 = BULK_EP_MAXPACKET,
     .idVendor = 0x59e3,
     .idProduct = 0x0a23,
-    .bcdDevice = 0x0200,
+    .bcdDevice = 0x0200, // Version
     .iManufacturer = 1,
     .iProduct = 2,
     .iSerialNumber = 3,
@@ -30,30 +30,30 @@ static const struct usb_endpoint_descriptor endp_bulk[] = {{
     .bLength = USB_DT_ENDPOINT_SIZE,
     .bDescriptorType = USB_DT_ENDPOINT,
     .bEndpointAddress = USB_REQ_TYPE_IN | 1,
-    .bmAttributes = USB_ENDPOINT_ATTR_BULK,
+    .bmAttributes = USB_ENDPOINT_ATTR_BULK | USB_ENDPOINT_ATTR_NOSYNC | USB_ENDPOINT_ATTR_DATA,
     .wMaxPacketSize = BULK_EP_MAXPACKET,
-    .bInterval = 1,
+    .bInterval = 0,
 }, {
     .bLength = USB_DT_ENDPOINT_SIZE,
     .bDescriptorType = USB_DT_ENDPOINT,
     .bEndpointAddress = USB_REQ_TYPE_OUT | 2,
-    .bmAttributes = USB_ENDPOINT_ATTR_BULK,
+    .bmAttributes = USB_ENDPOINT_ATTR_BULK | USB_ENDPOINT_ATTR_NOSYNC | USB_ENDPOINT_ATTR_DATA,
     .wMaxPacketSize = BULK_EP_MAXPACKET,
-    .bInterval = 1,
+    .bInterval = 0,
 }, {
     .bLength = USB_DT_ENDPOINT_SIZE,
     .bDescriptorType = USB_DT_ENDPOINT,
     .bEndpointAddress = USB_REQ_TYPE_IN | 3,
-    .bmAttributes = USB_ENDPOINT_ATTR_BULK,
+    .bmAttributes = USB_ENDPOINT_ATTR_BULK | USB_ENDPOINT_ATTR_NOSYNC | USB_ENDPOINT_ATTR_DATA,
     .wMaxPacketSize = BULK_EP_MAXPACKET,
-    .bInterval = 1,
+    .bInterval = 0,
 }, {
     .bLength = USB_DT_ENDPOINT_SIZE,
     .bDescriptorType = USB_DT_ENDPOINT,
-    .bEndpointAddress = USB_REQ_TYPE_IN | 4,
-    .bmAttributes = USB_ENDPOINT_ATTR_BULK,
+    .bEndpointAddress = USB_REQ_TYPE_OUT | 4,
+    .bmAttributes = USB_ENDPOINT_ATTR_BULK | USB_ENDPOINT_ATTR_NOSYNC | USB_ENDPOINT_ATTR_DATA,
     .wMaxPacketSize = BULK_EP_MAXPACKET,
-    .bInterval = 1,
+    .bInterval = 0,
 }};
 
 static const struct usb_interface_descriptor data_iface[] = {{
@@ -81,8 +81,8 @@ static const struct usb_config_descriptor config = {
     .bNumInterfaces = 1,
     .bConfigurationValue = 1,
     .iConfiguration = 0,
-    .bmAttributes = 0x80,
-    .bMaxPower = 0x32,
+    .bmAttributes = USB_CONFIG_ATTR_DEFAULT,
+    .bMaxPower = 500 >> 1,
     .interface = ifaces,
 };
 
@@ -94,18 +94,23 @@ static const char *usb_strings[] = {
 
 /* Buffer to be used for control requests. */
 uint8_t usbd_control_buffer[128];
-uint16_t pktcount;
 uint8_t testbuf[16];
 
-static void ep_1_data_in_cb(usbd_device *usbd_dev, uint8_t ep) {
-    uint32_t buf[BULK_EP_MAXPACKET];
-    buf[0] = pktcount++;
+static void ep_1_cb(usbd_device *usbd_dev, uint8_t ep) {
+    char buf[BULK_EP_MAXPACKET];
     usbd_ep_write_packet(usbd_dev, ep, buf, BULK_EP_MAXPACKET);
 }
 
-static void ep_2_data_out_cb(usbd_device *usbd_dev, uint8_t ep) {
+static void ep_2_cb(usbd_device *usbd_dev, uint8_t ep) {
     char buf[BULK_EP_MAXPACKET];
     usbd_ep_read_packet(usbd_dev, ep, buf, BULK_EP_MAXPACKET);
+}
+
+static void ep_4_cb(usbd_device *usbd_dev, uint8_t ep)
+{
+    (void)usbd_dev;
+    (void)ep;
+    // Do nothing
 }
 
 static enum usbd_request_return_codes control_callback(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf,
@@ -134,33 +139,27 @@ static enum usbd_request_return_codes control_callback(usbd_device *usbd_dev, st
 static void config_callback(usbd_device *usbd_dev, uint16_t wValue) {
     (void)wValue;
 
-    usbd_ep_setup(usbd_dev, USB_REQ_TYPE_IN | 1, USB_ENDPOINT_ATTR_BULK, BULK_EP_MAXPACKET, ep_1_data_in_cb);
-    usbd_ep_setup(usbd_dev, USB_REQ_TYPE_OUT | 2, USB_ENDPOINT_ATTR_BULK, BULK_EP_MAXPACKET, ep_2_data_out_cb);
+    usbd_ep_setup(usbd_dev, USB_REQ_TYPE_IN | 1, USB_ENDPOINT_ATTR_BULK, BULK_EP_MAXPACKET, ep_1_cb);
+    usbd_ep_setup(usbd_dev, USB_REQ_TYPE_OUT | 2, USB_ENDPOINT_ATTR_BULK, BULK_EP_MAXPACKET, ep_2_cb);
     usbd_ep_setup(usbd_dev, USB_REQ_TYPE_IN | 3, USB_ENDPOINT_ATTR_BULK, BULK_EP_MAXPACKET, NULL);
-    usbd_ep_setup(usbd_dev, USB_REQ_TYPE_OUT | 4, USB_ENDPOINT_ATTR_BULK, BULK_EP_MAXPACKET, NULL);
+    usbd_ep_setup(usbd_dev, USB_REQ_TYPE_OUT | 4, USB_ENDPOINT_ATTR_BULK, BULK_EP_MAXPACKET, ep_4_cb);
 
     usbd_register_control_callback(usbd_dev, USB_REQ_TYPE_VENDOR, USB_REQ_TYPE_TYPE, control_callback);
-    ep_1_data_in_cb(usbd_dev, USB_REQ_TYPE_IN | 1);
+
+    // Preload data for polling
+    ep_1_cb(usbd_dev, USB_REQ_TYPE_IN | 1);
+
+    // Break ep 4 so it times out
+    usbd_ep_nak_set(usbd_dev, USB_REQ_TYPE_OUT | 4, 1);
 }
 
 int main(void) {
     usbd_device *usbd_dev;
-
     rcc_clock_setup_pll(&rcc_hsi_configs[RCC_CLOCK_HSI_48MHZ]);
-    rcc_periph_clock_enable(RCC_GPIOA);
-    rcc_periph_clock_enable(RCC_AFIO);
-
-    AFIO_MAPR |= AFIO_MAPR_SWJ_CFG_JTAG_OFF_SW_ON;
-
-    gpio_set_mode(GPIOA, GPIO_MODE_INPUT, 0, GPIO15);
 
     usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
     usbd_register_set_config_callback(usbd_dev, config_callback);
                 
-    gpio_set(GPIOA, GPIO15);
-    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ,
-              GPIO_CNF_OUTPUT_PUSHPULL, GPIO15);
-
     while (1)
         usbd_poll(usbd_dev);
 }
