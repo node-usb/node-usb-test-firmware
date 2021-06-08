@@ -1,6 +1,6 @@
 # Node.js USB Test Firmware
 
-[![Build Status](https://github.com/thegecko/node-usb-test-firmware/workflows/ci/badge.svg)](https://github.com/thegecko/node-usb-test-firmware/actions)
+[![Build Status](https://github.com/node-usb/node-usb-test-firmware/workflows/ci/badge.svg)](https://github.com/node-usb/node-usb-test-firmware/actions)
 
 Test firmware for the [node-usb](https://github.com/tessel/node-usb) project.
 
@@ -8,7 +8,7 @@ Test firmware for the [node-usb](https://github.com/tessel/node-usb) project.
 
 This project has been built for the [STM32F103 Microprocessor](https://www.st.com/en/microcontrollers-microprocessors/stm32f103.html), specifically the low-cost `blue-pill` device.
 
-Grab a binary from the [releases](https://github.com/thegecko/node-usb-test-firmware/releases) and flash it to your hardware.
+Grab a binary from the [releases](https://github.com/node-usb/node-usb-test-firmware/releases) and flash it to your hardware.
 
 Execute the [node-usb tests](https://github.com/tessel/node-usb/blob/master/test/usb.coffee) and ensure they pass.
 
@@ -43,7 +43,7 @@ Flash the firmware to the device:
 If you want to build this locally (for example to target a [different device](https://github.com/libopencm3/libopencm3/blob/master/ld/devices.data)), clone this repository recursively:
 
 ```bash
-> git clone https://github.com/thegecko/node-usb-test-firmware --recurse-submodules
+> git clone https://github.com/node-usb/node-usb-test-firmware --recurse-submodules
 ```
 
 Ensure the arm-embedded gcc toolchain is installed. eg. on `MacOS`:
