@@ -18,7 +18,8 @@ There are many ways to flash binaries to target hardware, this project was built
 
 Connect `3V3`, `SWDIO`, `SWCLK` and `GND` wires of the SWD connector to the ST-LINK device:
 
-<img src="https://www.programmersought.com/images/160/33d77575620495f71efef4eb4598a3c8.png">
+![connections](https://github.com/node-usb/node-usb-test-firmware/assets/61341/81defa91-124e-4a11-8761-0ce1c5d35cb9)
+![1d9cb4d1ed9b7be6277ec46973dacb3303a7c211](https://github.com/node-usb/node-usb-test-firmware/assets/61341/56aa9e1a-70a9-4f3c-8723-f9c4aabc9868)
 
 Install the [OSS ST-LINK tools](https://github.com/stlink-org/stlink)
 
