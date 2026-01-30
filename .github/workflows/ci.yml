@@ -16,6 +16,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - run: brew install --cask gcc-arm-embedded
+      - run: brew install hub
       - uses: actions/checkout@v2
         with:
           submodules: recursive
