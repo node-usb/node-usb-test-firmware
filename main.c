@@ -3,13 +3,45 @@
  */
 
 #include <string.h>
+#include <stdint.h>
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/cm3/systick.h>
-#include <libopencm3/usb/usbd.h>
 #include <libopencm3/stm32/rcc.h>
+#include <libopencm3/usb/usbd.h>
+#include <libopencm3/usb/usbstd.h>
 
 #define BULK_EP_MAXPACKET 64
 #define CONTROL_EP_PACKET 16
+#define WCID_VENDOR_CODE 0x37
+
+void register_wcid_desc(usbd_device *usb_dev);
+
+static enum usbd_request_return_codes msft_string_desc(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len, usbd_control_complete_callback *complete);
+static enum usbd_request_return_codes msft_feature_desc(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len, usbd_control_complete_callback *complete);
+
+// Microsoft WCID string descriptor (string index 0xee)
+static const uint8_t msft_sig_desc[] = {
+    0x12,
+    USB_DT_STRING,
+    'M', 0, 'S', 0, 'F', 0, 'T', 0,
+    '1', 0, '0', 0, '0', 0,
+    WCID_VENDOR_CODE,
+    0
+};
+
+// Microsoft WCID feature descriptor (index 0x0004)
+static const uint8_t wcid_feature_desc[] = {
+    0x28, 0x00, 0x00, 0x00,                         // length = 40 bytes
+    0x00, 0x01,                                     // version 1.0 (in BCD)
+    0x04, 0x00,                                     // compatibility descriptor index 0x0004
+    0x01,                                           // number of sections
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,       // reserved (7 bytes)
+    0x00,                                           // interface number 0
+    0x01,                                           // reserved
+    0x57, 0x49, 0x4E, 0x55, 0x53, 0x42, 0x00, 0x00, // Compatible ID "WINUSB\0\0"
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Subcompatible ID (unused)
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00              // reserved 6 bytes
+};
 
 static const struct usb_device_descriptor dev = {
     .bLength = USB_DT_DEVICE_SIZE,
@@ -144,6 +176,46 @@ static enum usbd_request_return_codes control_callback(usbd_device *usbd_dev, st
     return USBD_REQ_NOTSUPP;
 }
 
+// Registers additional control request handlers to implement
+// See https://github.com/pbatard/libwdi/wiki/WCID-Devices
+void register_wcid_desc(usbd_device *usb_dev) {
+    usbd_register_control_callback(usb_dev, USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_DEVICE, USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT, msft_string_desc);
+    usbd_register_control_callback(usb_dev, USB_REQ_TYPE_VENDOR, USB_REQ_TYPE_TYPE, msft_feature_desc);
+}
+
+static enum usbd_request_return_codes msft_string_desc(__attribute__((unused)) usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf,
+    uint16_t *len, __attribute__((unused)) usbd_control_complete_callback *complete) {
+    // 0x03: descriptor type string
+    // 0xee: Microsoft WCID string index
+    if (req->bRequest == USB_REQ_GET_DESCRIPTOR && req->wValue == 0x03ee)
+    {
+        *buf = (uint8_t *)msft_sig_desc;
+
+        if (*len > msft_sig_desc[0])
+            *len = msft_sig_desc[0];
+
+        return USBD_REQ_HANDLED;
+    }
+
+    return USBD_REQ_NEXT_CALLBACK;
+}
+
+static enum usbd_request_return_codes msft_feature_desc(__attribute__((unused)) usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf,
+    uint16_t *len, __attribute__((unused)) usbd_control_complete_callback *complete) {
+    // 0x0004: Microsoft WCID index for feature descriptor
+    if (req->bRequest == WCID_VENDOR_CODE && req->wIndex == 0x0004)
+    {
+        *buf = (uint8_t *)wcid_feature_desc;
+
+        if (*len > wcid_feature_desc[0])
+            *len = wcid_feature_desc[0];
+
+        return USBD_REQ_HANDLED;
+    }
+
+    return USBD_REQ_NEXT_CALLBACK;
+}
+
 static void config_callback(usbd_device *usbd_dev, uint16_t wValue) {
     (void)wValue;
 
@@ -169,6 +241,8 @@ static void config_callback(usbd_device *usbd_dev, uint16_t wValue) {
 	systick_set_reload(99999);
 	systick_interrupt_enable();
 	systick_counter_enable();
+
+    register_wcid_desc(usbd_dev);
 }
 
 int main(void) {
@@ -177,6 +251,7 @@ int main(void) {
     uint8_t usbd_control_buffer[128];
     test_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
     usbd_register_set_config_callback(test_dev, config_callback);
+    register_wcid_desc(test_dev);
 
     while (1) {
         usbd_poll(test_dev);
