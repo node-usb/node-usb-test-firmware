@@ -24,19 +24,19 @@ Connect `3V3`, `SWDIO`, `SWCLK` and `GND` wires of the SWD connector to the ST-L
 Install the [OSS ST-LINK tools](https://github.com/stlink-org/stlink)
 
 ```bash
-> brew install stlink
+brew install stlink
 ```
 
 Confirm the device can be found:
 
 ```bash
-> st-info --probe
+st-info --probe
 ```
 
 Flash the firmware to the device:
 
 ```bash
-> st-flash --reset write firmware.bin 0x08000000
+st-flash --reset write firmware.bin 0x08000000
 ```
 
 ## Development
@@ -44,18 +44,18 @@ Flash the firmware to the device:
 If you want to build this locally (for example to target a [different device](https://github.com/libopencm3/libopencm3/blob/master/ld/devices.data)), clone this repository recursively:
 
 ```bash
-> git clone https://github.com/node-usb/node-usb-test-firmware --recurse-submodules
+git clone https://github.com/node-usb/node-usb-test-firmware --recurse-submodules
 ```
 
 Ensure the arm-embedded gcc toolchain is installed. eg. on `MacOS`:
 
 ```bash
-> brew install --cask gcc-arm-embedded
+brew install --cask gcc-arm-embedded
 ```
 
 Build the project:
 
 ```bash
-> make -C libopencm3
-> make
+make -C libopencm3
+make
 ```
